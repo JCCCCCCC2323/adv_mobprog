@@ -1,34 +1,14 @@
-import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:ocray_advmobprog/main.dart';
-import 'package:provider/provider.dart';
+import 'package:ocray_advmobprog/providers/theme_provider.dart';
 
 void main() {
-  testWidgets('counter and theme switch work together', (
-    WidgetTester tester,
-  ) async {
-    await tester.pumpWidget(
-      ChangeNotifierProvider(
-        create: (context) => ThemeModel(),
-        child: const MyApp(),
-      ),
-    );
+  test('theme provider toggles dark mode', () {
+    final themeProvider = ThemeProvider();
 
-    MaterialApp materialApp = tester.widget(find.byType(MaterialApp));
-    expect(materialApp.theme?.brightness, Brightness.light);
-    expect(find.text('0'), findsOneWidget);
-    expect(find.text('1'), findsNothing);
+    expect(themeProvider.isDark, isFalse);
 
-    await tester.tap(find.byIcon(Icons.add));
-    await tester.pump();
+    themeProvider.toggleTheme();
 
-    expect(find.text('0'), findsNothing);
-    expect(find.text('1'), findsOneWidget);
-
-    await tester.tap(find.byType(Switch));
-    await tester.pump();
-
-    materialApp = tester.widget(find.byType(MaterialApp));
-    expect(materialApp.theme?.brightness, Brightness.dark);
+    expect(themeProvider.isDark, isTrue);
   });
 }

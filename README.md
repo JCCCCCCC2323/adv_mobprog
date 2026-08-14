@@ -15,3 +15,9 @@ A few resources to get you started if this is your first Flutter project:
 For help getting started with Flutter development, view the
 [online documentation](https://docs.flutter.dev/), which offers tutorials,
 samples, guidance on mobile development, and a full API reference.
+
+## Lab Activity 2: Discussion
+
+In this activity, the app has three main parts: model, service, and screen. The model holds the product data, the service gets the data from the API, and the screen shows the products in the app.
+
+The app also has a search bar, a details page when a product is clicked, and a settings page for dark and light mode. The design pattern used is helpful because each file has its own job, so the code is easier to understand and fix.
