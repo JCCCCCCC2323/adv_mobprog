@@ -26,7 +26,7 @@ class _HomeScreenState extends State<HomeScreen> {
           automaticallyImplyLeading: false,
           elevation: 2,
           title: (_selectedIndex == 0)
-              ? Image.asset('assets/images/nudbexchange_logo.png', scale: 11.sp)
+              ? Image.asset('assets/images/nudbexchange_logo.jpg', scale: 11.sp)
               : CustomText(
                   text: (_selectedIndex == 1)
                       ? 'Chat'
@@ -76,3 +76,4 @@ class _HomeScreenState extends State<HomeScreen> {
     _pageController.jumpToPage(value);
   }
 }
+
