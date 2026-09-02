@@ -65,89 +65,68 @@ class _CartScreenState extends State<CartScreen> {
             );
           }
 
-          return ListView(
-            padding: EdgeInsets.all(16.r),
+          return Column(
             children: [
-              _CartSummary(cart: cart),
-              SizedBox(height: 12.h),
-              if (cart.products.isEmpty)
-                Padding(
-                  padding: EdgeInsets.only(top: 80.h),
-                  child: Column(
-                    children: [
-                      Icon(Icons.remove_shopping_cart_outlined, size: 56.sp),
-                      SizedBox(height: 12.h),
-                      CustomText(
-                        text: 'Your cart is empty.',
-                        fontSize: 16.sp,
-                        fontWeight: FontWeight.w600,
+              Expanded(
+                child: cart.products.isEmpty
+                    ? _buildEmptyCart()
+                    : ListView.builder(
+                        padding: EdgeInsets.fromLTRB(16.w, 16.h, 16.w, 8.h),
+                        itemCount: cart.products.length,
+                        itemBuilder: (context, index) {
+                          final product = cart.products[index];
+                          return _CartProductCard(
+                            product: product,
+                            onIncrease: () =>
+                                _cartService.increaseQuantity(product.id),
+                            onDecrease: () =>
+                                _cartService.decreaseQuantity(product.id),
+                            onDelete: () =>
+                                _cartService.removeProduct(product.id),
+                            onOpen: () {
+                              // Enhancement 1: Reuse detail_screen when a cart card is clicked.
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) =>
+                                      DetailScreen(product: product),
+                                ),
+                              );
+                            },
+                          );
+                        },
                       ),
-                      SizedBox(height: 6.h),
-                      CustomText(
-                        text: 'Go to Shop and add a product.',
-                        fontSize: 13.sp,
-                      ),
-                    ],
-                  ),
-                )
-              else
-                ...cart.products.map(
-                  (product) => _CartProductCard(
-                    product: product,
-                    onIncrease: () => _cartService.increaseQuantity(product.id),
-                    onDecrease: () => _cartService.decreaseQuantity(product.id),
-                    onDelete: () => _cartService.removeProduct(product.id),
-                    onOpen: () {
-                      // Enhancement 1: Cart items remain clickable and reuse detail_screen.
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => DetailScreen(product: product),
-                        ),
-                      );
-                    },
-                  ),
-                ),
+              ),
+              _CheckoutSummary(
+                cart: cart,
+                onConfirm: () {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Order confirmed')),
+                  );
+                },
+              ),
             ],
           );
         },
       ),
     );
   }
-}
 
-class _CartSummary extends StatelessWidget {
-  const _CartSummary({required this.cart});
-
-  final Cart cart;
-
-  @override
-  Widget build(BuildContext context) {
-    return Card(
-      child: Padding(
-        padding: EdgeInsets.all(16.r),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            CustomText(
-              text: 'User ${cart.userId} Cart #${cart.id}',
-              fontSize: 18.sp,
-              fontWeight: FontWeight.bold,
-            ),
-            SizedBox(height: 6.h),
-            CustomText(
-              text:
-                  '${cart.totalProducts} products | ${cart.totalQuantity} items',
-              fontSize: 13.sp,
-            ),
-            SizedBox(height: 8.h),
-            CustomText(
-              text: 'Total: \$${cart.total.toStringAsFixed(2)}',
-              fontSize: 17.sp,
-              fontWeight: FontWeight.bold,
-            ),
-          ],
-        ),
+  Widget _buildEmptyCart() {
+    return Center(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(Icons.remove_shopping_cart_outlined, size: 56.sp),
+          SizedBox(height: 12.h),
+          CustomText(
+            text: 'Your cart is empty.',
+            fontSize: 16.sp,
+            fontWeight: FontWeight.w600,
+          ),
+          SizedBox(height: 6.h),
+          CustomText(text: 'Go to Shop and add a product.', fontSize: 13.sp),
+        ],
       ),
     );
   }
@@ -170,68 +149,241 @@ class _CartProductCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Card(
-      margin: EdgeInsets.only(bottom: 10.h),
-      child: Column(
-        children: [
-          ListTile(
-            onTap: onOpen,
-            leading: Image.network(
-              product.thumbnail,
-              width: 48.w,
-              height: 48.w,
-              fit: BoxFit.cover,
-              errorBuilder: (context, error, stackTrace) =>
-                  const Icon(Icons.shopping_cart),
-            ),
-            title: CustomText(
-              text: product.title,
-              fontSize: 14.sp,
-              fontWeight: FontWeight.w600,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-            ),
-            subtitle: CustomText(
-              text: '\$${product.price.toStringAsFixed(2)} each',
-              fontSize: 12.sp,
-            ),
-            trailing: IconButton(
-              tooltip: 'Remove product',
-              onPressed: onDelete,
-              icon: const Icon(Icons.delete_outline, color: Colors.red),
-            ),
-          ),
-          const Divider(height: 1),
-          Padding(
-            padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 6.h),
+    final colorScheme = Theme.of(context).colorScheme;
+
+    // Swipe a card to the left to remove it from the cart.
+    return Dismissible(
+      key: ValueKey(product.id),
+      direction: DismissDirection.endToStart,
+      onDismissed: (_) => onDelete(),
+      background: Container(
+        margin: EdgeInsets.only(bottom: 12.h),
+        padding: EdgeInsets.only(right: 24.w),
+        alignment: Alignment.centerRight,
+        decoration: BoxDecoration(
+          color: colorScheme.error,
+          borderRadius: BorderRadius.circular(16.r),
+        ),
+        child: Icon(Icons.delete, color: colorScheme.onError),
+      ),
+      child: Card(
+        elevation: 1,
+        margin: EdgeInsets.only(bottom: 12.h),
+        clipBehavior: Clip.antiAlias,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16.r),
+        ),
+        child: InkWell(
+          onTap: onOpen,
+          child: Padding(
+            padding: EdgeInsets.all(12.r),
             child: Row(
               children: [
-                CustomText(
-                  text: 'Subtotal: \$${product.total.toStringAsFixed(2)}',
-                  fontSize: 13.sp,
-                  fontWeight: FontWeight.w600,
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(10.r),
+                  child: Image.network(
+                    product.thumbnail,
+                    width: 72.w,
+                    height: 72.w,
+                    fit: BoxFit.cover,
+                    errorBuilder: (context, error, stackTrace) => Container(
+                      width: 72.w,
+                      height: 72.w,
+                      color: colorScheme.surfaceContainerHighest,
+                      child: const Icon(Icons.shopping_bag_outlined),
+                    ),
+                  ),
                 ),
-                const Spacer(),
-                IconButton(
-                  tooltip: 'Decrease quantity',
-                  onPressed: onDecrease,
-                  icon: const Icon(Icons.remove_circle_outline),
+                SizedBox(width: 12.w),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      CustomText(
+                        text: product.title,
+                        fontSize: 13.sp,
+                        fontWeight: FontWeight.bold,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      SizedBox(height: 5.h),
+                      CustomText(
+                        text: '\$${product.price.toStringAsFixed(2)}',
+                        fontSize: 13.sp,
+                        fontWeight: FontWeight.bold,
+                      ),
+                      SizedBox(height: 4.h),
+                      CustomText(
+                        text:
+                            '${product.discountPercentage.toStringAsFixed(0)}% off • '
+                            '\$${product.discountedTotal.toStringAsFixed(2)} total',
+                        fontSize: 10.sp,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ],
+                  ),
                 ),
-                CustomText(
-                  text: '${product.quantity}',
-                  fontSize: 14.sp,
-                  fontWeight: FontWeight.bold,
-                ),
-                IconButton(
-                  tooltip: 'Increase quantity',
-                  onPressed: onIncrease,
-                  icon: const Icon(Icons.add_circle_outline),
+                SizedBox(width: 8.w),
+                Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    _QuantityButton(
+                      icon: Icons.add,
+                      backgroundColor: Colors.amber,
+                      foregroundColor: Colors.black,
+                      onPressed: onIncrease,
+                    ),
+                    Padding(
+                      padding: EdgeInsets.symmetric(vertical: 3.h),
+                      child: CustomText(
+                        text: '${product.quantity}',
+                        fontSize: 13.sp,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    _QuantityButton(
+                      icon: Icons.remove,
+                      backgroundColor: colorScheme.surfaceContainerHighest,
+                      foregroundColor: colorScheme.onSurface,
+                      onPressed: onDecrease,
+                    ),
+                  ],
                 ),
               ],
             ),
           ),
+        ),
+      ),
+    );
+  }
+}
+
+class _QuantityButton extends StatelessWidget {
+  const _QuantityButton({
+    required this.icon,
+    required this.backgroundColor,
+    required this.foregroundColor,
+    required this.onPressed,
+  });
+
+  final IconData icon;
+  final Color backgroundColor;
+  final Color foregroundColor;
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: 32.r,
+      height: 32.r,
+      child: IconButton(
+        padding: EdgeInsets.zero,
+        style: IconButton.styleFrom(
+          backgroundColor: backgroundColor,
+          foregroundColor: foregroundColor,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(8.r),
+          ),
+        ),
+        onPressed: onPressed,
+        icon: Icon(icon, size: 18.sp),
+      ),
+    );
+  }
+}
+
+class _CheckoutSummary extends StatelessWidget {
+  const _CheckoutSummary({required this.cart, required this.onConfirm});
+
+  final Cart cart;
+  final VoidCallback onConfirm;
+
+  @override
+  Widget build(BuildContext context) {
+    final savings = cart.total - cart.discountedTotal;
+
+    return Container(
+      width: double.infinity,
+      padding: EdgeInsets.fromLTRB(16.w, 12.h, 16.w, 16.h),
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.surface,
+        boxShadow: const [
+          BoxShadow(
+            color: Colors.black12,
+            blurRadius: 8,
+            offset: Offset(0, -2),
+          ),
         ],
       ),
+      child: Column(
+        children: [
+          _SummaryRow(label: 'Subtotal', amount: cart.total),
+          SizedBox(height: 4.h),
+          _SummaryRow(label: 'Discount', amount: -savings),
+          Divider(height: 18.h),
+          _SummaryRow(
+            label: 'Total',
+            amount: cart.discountedTotal,
+            isBold: true,
+          ),
+          SizedBox(height: 12.h),
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton(
+              onPressed: cart.products.isEmpty ? null : onConfirm,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.amber,
+                foregroundColor: Colors.black,
+                disabledBackgroundColor: Colors.grey.shade300,
+                padding: EdgeInsets.symmetric(vertical: 15.h),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12.r),
+                ),
+              ),
+              child: const Text(
+                'Confirm Order',
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _SummaryRow extends StatelessWidget {
+  const _SummaryRow({
+    required this.label,
+    required this.amount,
+    this.isBold = false,
+  });
+
+  final String label;
+  final double amount;
+  final bool isBold;
+
+  @override
+  Widget build(BuildContext context) {
+    final amountText = amount < 0
+        ? '-\$${amount.abs().toStringAsFixed(2)}'
+        : '\$${amount.toStringAsFixed(2)}';
+
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        CustomText(
+          text: label,
+          fontSize: isBold ? 14.sp : 12.sp,
+          fontWeight: isBold ? FontWeight.bold : FontWeight.normal,
+        ),
+        CustomText(
+          text: amountText,
+          fontSize: isBold ? 14.sp : 12.sp,
+          fontWeight: isBold ? FontWeight.bold : FontWeight.normal,
+        ),
+      ],
     );
   }
 }

@@ -5,7 +5,6 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import '../models/product.dart';
 
 // services
-import '../services/cart_service.dart';
 import '../services/product_service.dart';
 
 // widgets
@@ -23,7 +22,6 @@ class ProductScreen extends StatefulWidget {
 class _ProductScreenState extends State<ProductScreen> {
   late final Future<List<Product>> _productsFuture;
   final TextEditingController _searchController = TextEditingController();
-  final CartService _cartService = CartService();
   String _searchText = '';
 
   @override
@@ -36,23 +34,6 @@ class _ProductScreenState extends State<ProductScreen> {
   void dispose() {
     _searchController.dispose();
     super.dispose();
-  }
-
-  Future<void> _addToCart(Product product) async {
-    try {
-      // Enhancement 3: Passing the selected product id and quantity to /carts/add.
-      await _cartService.addToCart(product);
-
-      if (!mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('${product.title} added to cart')));
-    } catch (error) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Failed to add to cart: $error')));
-    }
   }
 
   @override
@@ -182,15 +163,6 @@ class _ProductScreenState extends State<ProductScreen> {
                                         '\$${product.price.toStringAsFixed(2)}',
                                     fontSize: 13.sp,
                                     fontWeight: FontWeight.w600,
-                                  ),
-                                  SizedBox(height: 6.h),
-                                  SizedBox(
-                                    width: double.infinity,
-                                    child: ElevatedButton.icon(
-                                      onPressed: () => _addToCart(product),
-                                      icon: const Icon(Icons.add_shopping_cart),
-                                      label: const Text('Add'),
-                                    ),
                                   ),
                                 ],
                               ),

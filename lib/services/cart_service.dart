@@ -8,7 +8,7 @@ import '../models/cart.dart';
 import '../models/product.dart';
 
 class CartService extends ChangeNotifier {
-  static const int userId = 5;
+  static const int userId = 1;
   static final CartService _instance = CartService._internal();
 
   factory CartService() => _instance;
@@ -44,25 +44,24 @@ class CartService extends ChangeNotifier {
   Future<Cart> addToCart(Product product, {int quantity = 1}) async {
     await getCartByUserId();
 
-    // Enhancement 3: Update locally because DummyJSON only simulates saving.
-    _addProductLocally(product, quantity);
+    // Enhancement 3: Send the selected product and user values to /carts/add.
+    final response = await http.post(
+      Uri.parse('$host/carts/add'),
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({
+        'userId': userId,
+        'products': [
+          {'id': product.id, 'quantity': quantity},
+        ],
+      }),
+    );
 
-    // Still send the required product and user values to /carts/add.
-    try {
-      await http.post(
-        Uri.parse('$host/carts/add'),
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({
-          'userId': userId,
-          'products': [
-            {'id': product.id, 'quantity': quantity},
-          ],
-        }),
-      );
-    } catch (_) {
-      // Keep the local cart usable if the simulated endpoint is unavailable.
+    if (response.statusCode != 200 && response.statusCode != 201) {
+      throw Exception('Failed to add product');
     }
 
+    // DummyJSON simulates the request, so also update the shared local cart.
+    _addProductLocally(product, quantity);
     return _cart!;
   }
 

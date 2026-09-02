@@ -2,12 +2,30 @@ import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 import '../models/product.dart';
+import '../services/cart_service.dart';
 import '../widgets/custom_text.dart';
 
 class ProductDetailScreen extends StatelessWidget {
   const ProductDetailScreen({super.key, required this.product});
 
   final Product product;
+
+  Future<void> _addToCart(BuildContext context) async {
+    try {
+      // Enhancement 3: Add to cart is available only on product details.
+      await CartService().addToCart(product);
+
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('${product.title} added to cart')));
+    } catch (error) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Failed to add to cart: $error')));
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -75,6 +93,15 @@ class ProductDetailScreen extends StatelessWidget {
                           'Rating: ${product.rating.toStringAsFixed(1)} | Stock: ${product.stock}',
                       fontSize: 13.sp,
                       fontWeight: FontWeight.w600,
+                    ),
+                    SizedBox(height: 24.h),
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton.icon(
+                        onPressed: () => _addToCart(context),
+                        icon: const Icon(Icons.add_shopping_cart),
+                        label: const Text('Add to Cart'),
+                      ),
                     ),
                   ],
                 ),
