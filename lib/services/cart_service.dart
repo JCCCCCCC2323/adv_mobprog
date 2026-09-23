@@ -6,9 +6,9 @@ import 'package:http/http.dart' as http;
 import '../constants.dart';
 import '../models/cart.dart';
 import '../models/product.dart';
+import 'user_service.dart';
 
 class CartService extends ChangeNotifier {
-  static const int userId = 1;
   static final CartService _instance = CartService._internal();
 
   factory CartService() => _instance;
@@ -16,14 +16,28 @@ class CartService extends ChangeNotifier {
   CartService._internal();
 
   Cart? _cart;
+  int _userId = 0;
 
   Cart? get currentCart => _cart;
 
   Future<Cart?> getCartByUserId() async {
+    // Enhancement 3: Use the saved logged-in user ID for the cart endpoint.
+    //Ocray do this completed//
+    final userData = await UserService().getUserData();
+    final savedUserId = userData['id'] as int? ?? 0;
+
+    if (savedUserId <= 0) {
+      throw Exception('No logged-in user found');
+    }
+
+    if (_userId != savedUserId) {
+      _userId = savedUserId;
+      _cart = null;
+    }
+
     if (_cart != null) return _cart;
 
-    // Enhancement 3: Load only one user's cart from DummyJSON.
-    final response = await http.get(Uri.parse('$host/carts/user/$userId'));
+    final response = await http.get(Uri.parse('$host/carts/user/$_userId'));
 
     if (response.statusCode != 200) {
       throw Exception('Failed to load user cart');
@@ -31,11 +45,9 @@ class CartService extends ChangeNotifier {
 
     final Map<String, dynamic> data = jsonDecode(response.body);
     final List cartsJson = data['carts'] ?? [];
-    if (cartsJson.isEmpty) {
-      _cart = _emptyCart();
-    } else {
-      _cart = Cart.fromJson(cartsJson.first);
-    }
+    _cart = cartsJson.isEmpty
+        ? _emptyCart()
+        : Cart.fromJson(cartsJson.first as Map<String, dynamic>);
 
     notifyListeners();
     return _cart;
@@ -44,12 +56,11 @@ class CartService extends ChangeNotifier {
   Future<Cart> addToCart(Product product, {int quantity = 1}) async {
     await getCartByUserId();
 
-    // Enhancement 3: Send the selected product and user values to /carts/add.
     final response = await http.post(
       Uri.parse('$host/carts/add'),
       headers: {'Content-Type': 'application/json'},
       body: jsonEncode({
-        'userId': userId,
+        'userId': _userId,
         'products': [
           {'id': product.id, 'quantity': quantity},
         ],
@@ -65,7 +76,6 @@ class CartService extends ChangeNotifier {
     return _cart!;
   }
 
-  // Enhancement 3: Add, subtract, and delete items while updating the total.
   void increaseQuantity(int productId) => _changeQuantity(productId, 1);
 
   void decreaseQuantity(int productId) => _changeQuantity(productId, -1);
@@ -74,6 +84,12 @@ class CartService extends ChangeNotifier {
     final products = List<CartProduct>.from(_cart?.products ?? [])
       ..removeWhere((item) => item.id == productId);
     _rebuildCart(products);
+  }
+
+  void resetCart() {
+    _userId = 0;
+    _cart = null;
+    notifyListeners();
   }
 
   void _changeQuantity(int productId, int change) {
@@ -139,7 +155,7 @@ class CartService extends ChangeNotifier {
         0.0,
         (sum, item) => sum + item.discountedTotal,
       ),
-      userId: userId,
+      userId: _userId,
       totalProducts: products.length,
       totalQuantity: products.fold(0, (sum, item) => sum + item.quantity),
     );
@@ -152,7 +168,7 @@ class CartService extends ChangeNotifier {
       products: const [],
       total: 0,
       discountedTotal: 0,
-      userId: userId,
+      userId: _userId,
       totalProducts: 0,
       totalQuantity: 0,
     );

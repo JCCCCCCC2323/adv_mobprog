@@ -3,6 +3,7 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 import 'cart_screen.dart';
 import 'product_screen.dart';
+import 'profile_screen.dart';
 
 import '../widgets/custom_text.dart';
 
@@ -48,11 +49,7 @@ class _HomeScreenState extends State<HomeScreen> {
         body: PageView(
           physics: const NeverScrollableScrollPhysics(),
           controller: _pageController,
-          children: const [
-            ProductScreen(),
-            CartScreen(),
-            Center(child: Text('Profile')),
-          ],
+          children: const [ProductScreen(), CartScreen(), ProfileScreen()],
           onPageChanged: (page) {
             setState(() {
               _selectedIndex = page;
