@@ -28,3 +28,11 @@ The user model, user service, and screens work together to show information from
 
 This activity uses an updated layered design pattern where the model holds the user data, the service handles the API and saved login, and the screens display the interface. The saved user ID is also used by the cart service to request `/carts/user/{userId}`, so the cart screen displays the cart that belongs to the logged-in user.
 
+
+## Lab Activity 5: Discussion
+
+The DummyJSON workflow sends a username and password from the sign-in screen to the DummyJSON login API. The API returns the user's information and token, then the app saves them and displays the home and profile screens. The Firebase workflow lets a new user complete the sign-up form using their name, age, contact number, username, email, and password. Firebase Authentication creates the account, and the user can later sign in using the registered email and password.
+
+The main purpose of `UserService` is to keep all account tasks in one place. It handles DummyJSON login, Firebase sign-in and sign-up, saved user information, login type, username updates, password changes, account deletion, and logout. This keeps the screens simple because they only collect input, call `UserService`, and display the result.
+
+Firebase improves the Flutter application because it provides secure account creation and login without making a separate authentication server. It also keeps users signed in, refreshes their authentication tokens, and provides tools for managing accounts and security. Because of this, the application can support real user accounts instead of depending only on sample DummyJSON users.
