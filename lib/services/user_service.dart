@@ -1,5 +1,7 @@
 import 'dart:convert';
 
+import 'package:cloud_firestore/cloud_firestore.dart';
+
 import 'package:firebase_auth/firebase_auth.dart' as firebase_auth;
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
@@ -107,13 +109,28 @@ class UserService {
     required String email,
   }) async {
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setString('firebaseUid', currentUser?.uid ?? '');
+    final uid = currentUser?.uid;
+
+    await prefs.setString('firebaseUid', uid ?? '');
     await prefs.setString('firstName', firstName);
     await prefs.setString('lastName', lastName);
     await prefs.setInt('age', age);
     await prefs.setString('contactNumber', contactNumber);
     await prefs.setString('username', username);
     await prefs.setString('email', email);
+
+    if (uid != null) {
+      await FirebaseFirestore.instance.collection('Users').doc(uid).set({
+        'uid': uid,
+        'firstName': firstName,
+        'lastName': lastName,
+        'age': age,
+        'contactNumber': contactNumber,
+        'username': username,
+        'email': email,
+        'updatedAt': FieldValue.serverTimestamp(),
+      }, SetOptions(merge: true));
+    }
   }
 
   Future<Map<String, dynamic>> loginUser(

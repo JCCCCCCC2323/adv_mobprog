@@ -1,11 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 
-import 'cart_screen.dart';
+import '../widgets/custom_text.dart';
+import 'chat_screen.dart';
 import 'product_screen.dart';
 import 'profile_screen.dart';
-
-import '../widgets/custom_text.dart';
 
 class HomeScreen extends StatefulWidget {
   final String username;
@@ -20,6 +19,12 @@ class _HomeScreenState extends State<HomeScreen> {
   final PageController _pageController = PageController();
 
   @override
+  void dispose() {
+    _pageController.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     return PopScope(
       canPop: false,
@@ -27,16 +32,11 @@ class _HomeScreenState extends State<HomeScreen> {
         appBar: AppBar(
           automaticallyImplyLeading: false,
           elevation: 2,
-          title: (_selectedIndex == 0)
+          title: _selectedIndex == 0
               ? Image.asset('assets/images/nudbexchange_logo.jpg', scale: 11.sp)
               : CustomText(
-                  text: (_selectedIndex == 1)
-                      ? 'Cart'
-                      : (_selectedIndex == 2)
-                      ? 'Profile'
-                      : 'Home',
+                  text: _selectedIndex == 1 ? 'Chat' : 'Profile',
                   fontSize: 20.sp,
-                  // color: FB_LIGHT_PRIMARY,
                   fontWeight: FontWeight.w600,
                 ),
           actions: [
@@ -49,24 +49,11 @@ class _HomeScreenState extends State<HomeScreen> {
         body: PageView(
           physics: const NeverScrollableScrollPhysics(),
           controller: _pageController,
-          children: const [ProductScreen(), CartScreen(), ProfileScreen()],
-          onPageChanged: (page) {
-            setState(() {
-              _selectedIndex = page;
-            });
-          },
+          children: const [ProductScreen(), ChatScreen(), ProfileScreen()],
+          onPageChanged: (page) => setState(() => _selectedIndex = page),
         ),
-        // Enhancement 2: Chat is now a FloatingActionButton instead of a bottom navigation item.
-        floatingActionButton: _selectedIndex == 1
-            ? null
-            : FloatingActionButton(
-                onPressed: () {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Chat button clicked')),
-                  );
-                },
-                child: const Icon(Icons.chat),
-              ),
+        // Additional instruction: The second tab now renders the Chat List UI.
+        //Ocray do this completed//
         bottomNavigationBar: BottomNavigationBar(
           showSelectedLabels: false,
           showUnselectedLabels: false,
@@ -74,8 +61,9 @@ class _HomeScreenState extends State<HomeScreen> {
           items: const [
             BottomNavigationBarItem(icon: Icon(Icons.shop_2), label: 'Shop'),
             BottomNavigationBarItem(
-              icon: Icon(Icons.shopping_cart),
-              label: 'Cart',
+              icon: Icon(Icons.forum_outlined),
+              activeIcon: Icon(Icons.forum),
+              label: 'Chat',
             ),
             BottomNavigationBarItem(icon: Icon(Icons.person), label: 'Profile'),
           ],
@@ -86,9 +74,7 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   void _onTappedBar(int value) {
-    setState(() {
-      _selectedIndex = value;
-    });
+    setState(() => _selectedIndex = value);
     _pageController.jumpToPage(value);
   }
 }
