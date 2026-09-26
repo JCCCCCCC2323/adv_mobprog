@@ -36,16 +36,14 @@ class _SigninScreenState extends State<SigninScreen> {
     });
 
     try {
-      final response = await userService.loginUser(
+      await userService.loginUser(
         _usernameController.text.trim(),
         _passwordController.text,
       );
 
-      // Save user data to SharedPreferences.
-      await userService.saveUserData(response);
-
+      // loginUser already saves the session. Show the splash before Home.
       if (!mounted) return;
-      Navigator.pushReplacementNamed(context, '/home', arguments: response);
+      Navigator.pushReplacementNamed(context, '/splash');
     } catch (error) {
       if (!mounted) return;
       ScaffoldMessenger.of(
