@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_core/firebase_core.dart' show Firebase;
 
 import 'package:firebase_auth/firebase_auth.dart' as firebase_auth;
 import 'package:flutter/foundation.dart';
@@ -9,6 +10,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../constants.dart';
 import '../models/user.dart';
+import '../utils/firebase_profile_cache.dart';
 
 enum LoginType { dummyJson, firebase, none }
 
@@ -19,10 +21,11 @@ final ValueNotifier<UserService> userService = ValueNotifier(UserService());
 class UserService {
   Map<String, dynamic> data = {};
 
-  final firebase_auth.FirebaseAuth firebaseAuth =
+  firebase_auth.FirebaseAuth get firebaseAuth =>
       firebase_auth.FirebaseAuth.instance;
 
-  firebase_auth.User? get currentUser => firebaseAuth.currentUser;
+  firebase_auth.User? get currentUser =>
+      Firebase.apps.isEmpty ? null : firebaseAuth.currentUser;
 
   Stream<firebase_auth.User?> get authStateChanges =>
       firebaseAuth.authStateChanges();
@@ -51,7 +54,9 @@ class UserService {
     return credential;
   }
 
-  Future<void> signOut() => firebaseAuth.signOut();
+  Future<void> signOut() async {
+    if (Firebase.apps.isNotEmpty) await firebaseAuth.signOut();
+  }
 
   Future<void> updateUsername({required String username}) async {
     await currentUser?.updateDisplayName(username);
@@ -110,27 +115,28 @@ class UserService {
   }) async {
     final prefs = await SharedPreferences.getInstance();
     final uid = currentUser?.uid;
+    if (uid == null) throw StateError('Sign in before saving a profile.');
 
-    await prefs.setString('firebaseUid', uid ?? '');
-    await prefs.setString('firstName', firstName);
-    await prefs.setString('lastName', lastName);
-    await prefs.setInt('age', age);
-    await prefs.setString('contactNumber', contactNumber);
-    await prefs.setString('username', username);
-    await prefs.setString('email', email);
+    // Keep this local copy under the Firebase UID, not shared across emails.
+    await FirebaseProfileCache(prefs).save(uid, {
+      'firstName': firstName,
+      'lastName': lastName,
+      'age': age,
+      'contactNumber': contactNumber,
+      'username': username,
+      'email': email,
+    });
 
-    if (uid != null) {
-      await FirebaseFirestore.instance.collection('Users').doc(uid).set({
-        'uid': uid,
-        'firstName': firstName,
-        'lastName': lastName,
-        'age': age,
-        'contactNumber': contactNumber,
-        'username': username,
-        'email': email,
-        'updatedAt': FieldValue.serverTimestamp(),
-      }, SetOptions(merge: true));
-    }
+    await FirebaseFirestore.instance.collection('Users').doc(uid).set({
+      'uid': uid,
+      'firstName': firstName,
+      'lastName': lastName,
+      'age': age,
+      'contactNumber': contactNumber,
+      'username': username,
+      'email': email,
+      'updatedAt': FieldValue.serverTimestamp(),
+    }, SetOptions(merge: true));
   }
 
   Future<Map<String, dynamic>> loginUser(
@@ -179,6 +185,11 @@ class UserService {
   }
 
   Future<Map<String, dynamic>> getUserData() async {
+    final firebaseUser = currentUser;
+    if (firebaseUser != null) {
+      return _getFirebaseUserData(firebaseUser);
+    }
+
     final prefs = await SharedPreferences.getInstance();
 
     return {
@@ -195,6 +206,59 @@ class UserService {
       'accessToken': prefs.getString('accessToken') ?? '',
       'refreshToken': prefs.getString('refreshToken') ?? '',
       'token': prefs.getString('token') ?? prefs.getString('accessToken') ?? '',
+    };
+  }
+
+  Future<Map<String, dynamic>> _getFirebaseUserData(
+    firebase_auth.User firebaseUser,
+  ) async {
+    final prefs = await SharedPreferences.getInstance();
+    final uid = firebaseUser.uid;
+    final profile = FirebaseProfileCache(prefs).load(uid);
+
+    // Read the old shared fields only when they belong to this exact UID.
+    if (profile.isEmpty && prefs.getString('firebaseUid') == uid) {
+      profile.addAll({
+        'firstName': prefs.getString('firstName') ?? '',
+        'lastName': prefs.getString('lastName') ?? '',
+        'age': prefs.getInt('age') ?? 0,
+        'contactNumber': prefs.getString('contactNumber') ?? '',
+        'username': prefs.getString('username') ?? '',
+      });
+    }
+
+    try {
+      final snapshot = await FirebaseFirestore.instance
+          .collection('Users')
+          .doc(uid)
+          .get();
+      if (snapshot.exists) profile.addAll(snapshot.data() ?? {});
+    } on FirebaseException catch (error) {
+      debugPrint('Could not load Firebase profile: ${error.code}');
+    }
+
+    final email = firebaseUser.email?.trim() ?? '';
+    final savedUsername = (profile['username'] ?? '').toString().trim();
+    final displayName = firebaseUser.displayName?.trim() ?? '';
+    final age = profile['age'];
+    return {
+      'id': 0,
+      'firebaseUid': uid,
+      'username': savedUsername.isNotEmpty
+          ? savedUsername
+          : displayName.isNotEmpty
+          ? displayName
+          : email.split('@').first,
+      'email': email,
+      'firstName': (profile['firstName'] ?? '').toString(),
+      'lastName': (profile['lastName'] ?? '').toString(),
+      'gender': (profile['gender'] ?? '').toString(),
+      'age': age is int ? age : int.tryParse('$age') ?? 0,
+      'contactNumber': (profile['contactNumber'] ?? '').toString(),
+      'image': (profile['image'] ?? firebaseUser.photoURL ?? '').toString(),
+      'accessToken': '',
+      'refreshToken': '',
+      'token': '',
     };
   }
 

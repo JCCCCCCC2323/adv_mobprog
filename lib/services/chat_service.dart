@@ -13,10 +13,15 @@ class ChatService {
     final currentUserId = _firebaseAuth.currentUser?.uid;
     return _firestore.collection('Users').snapshots().map((snapshot) {
       final users = snapshot.docs
-          .where((document) => document.id != currentUserId)
+          .where((document) {
+            final storedUid = (document.data()['uid'] ?? '').toString().trim();
+            final uid = storedUid.isEmpty ? document.id : storedUid;
+            return uid != currentUserId;
+          })
           .map((document) {
             final user = Map<String, dynamic>.from(document.data());
-            user['uid'] = user['uid'] ?? document.id;
+            final storedUid = (user['uid'] ?? '').toString().trim();
+            user['uid'] = storedUid.isEmpty ? document.id : storedUid;
             return user;
           })
           .toList();

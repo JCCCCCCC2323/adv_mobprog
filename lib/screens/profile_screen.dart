@@ -196,7 +196,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           final isFirebase = loginType == LoginType.firebase;
           final firebaseUser = _userService.currentUser;
           final username = isFirebase
-              ? (firebaseUser?.displayName ?? data['username'] ?? '')
+              ? (data['username'] ?? firebaseUser?.displayName ?? '')
               : (data['username'] ?? '');
           final email = isFirebase
               ? (firebaseUser?.email ?? data['email'] ?? '')
